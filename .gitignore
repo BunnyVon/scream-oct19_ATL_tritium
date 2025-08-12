@@ -1,0 +1,9 @@
+# secrets / creds
+.env
+*.pem
+*.key
+aws_credentials*
+config/*secrets*.yml
+**/credentials
+**/secrets.*
+# secrets\components/elm/src/external_models/sbetr/3rd-party/hdf5/tools/libtest/h5tools_test_utils.c
