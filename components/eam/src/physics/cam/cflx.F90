@@ -21,7 +21,6 @@ contains
     use ppgrid,                 only: pver, pcols
     use constituents,           only: pcnst, cnst_get_ind, cnst_type
     use co2_cycle,              only: co2_cycle_set_cnst_type
-    use h3_cycle,               only: h3_cycle_set_cnst_type
     use camsrfexch,             only: cam_in_t
 
     implicit none

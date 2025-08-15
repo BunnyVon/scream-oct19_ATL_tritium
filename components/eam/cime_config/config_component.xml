@@ -81,7 +81,7 @@
       <!-- SCREAM configurations -->
       <value compset="_EAM%SCREAM-LR">-phys default -shoc_sgs -microphys p3 -chem spa -nlev 72 -rad rrtmgp -bc_dep_to_snow_updates -cppdefs '-DSCREAM'</value>
       <value compset="_EAM%SCREAM-HR">-phys default -shoc_sgs -microphys p3 -chem spa -nlev 128 -rad rrtmgp -bc_dep_to_snow_updates -cppdefs '-DSCREAM'</value>
-      <value compset="_EAM%SCREAM-HR*TRITIUM-">-h3_cycle</value>
+      <value compset="_EAM%SCREAM-HR-DYAMOND2-TIRITIUM">-phys default -shoc_sgs -microphys p3 -chem spa -nlev 128 -rad rrtmgp -bc_dep_to_snow_updates -cppdefs '-DSCREAM' -tritium_trcs</value>
       <value compset="_EAM%SCREAM.*-AQUA">-aquaplanet</value>
       
 
@@ -235,6 +235,21 @@
     =========================================
     EAM naming conventions
     =========================================
-  </help>
+ </help>
+
+  <!-- Tritium tracer configure toggle (mirrors age_of_air_trcs pattern) -->
+<!-- Tritium tracer namelist toggle (compset-agnostic) -->
+<entry id="tritium_trcs">
+  <type>logical</type>
+  <valid_values>true,false</valid_values>
+  <default_value>false</default_value>
+  <group>run_component_cam</group>
+  <file>env_run.xml</file>
+  <desc>
+    Enable the Tritium tracer package (used by build-namelist to set
+    tritium_tracers_flag = .true. if desired). No compset auto-enable;
+    control via xmlchange or user_nl_eam.
+  </desc>
+</entry>
 
 </definitions_variables>

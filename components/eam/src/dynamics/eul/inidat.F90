@@ -8,6 +8,7 @@ module inidat
 ! 
 ! Author: J. Olson  May 2004
 ! 
+! Modified: S. Feng Aug 2025 - added tritium tracers
 !-----------------------------------------------------------------------
    use ppgrid,              only: begchunk, endchunk, pcols
    use pmgrid,              only: beglat, endlat, plon, plat, plev, plnlv 
@@ -252,6 +253,7 @@ contains
     use chemistry   , only: chem_implements_cnst, chem_init_cnst
     use tracers     , only: tracers_implements_cnst, tracers_init_cnst
     use aoa_tracers , only: aoa_tracers_implements_cnst, aoa_tracers_init_cnst
+    use tritium_tracers , only: tritium_tracers_implements_cnst, tritium_tracers_init_cnst
     use clubb_intr  , only: clubb_implements_cnst, clubb_init_cnst
     use stratiform  , only: stratiform_implements_cnst, stratiform_init_cnst
     use microp_driver,only: microp_driver_implements_cnst, microp_driver_init_cnst
@@ -424,6 +426,10 @@ contains
               call aoa_tracers_init_cnst(cnst_name(m_cnst), arr3d_a(:,:,j), gcid)
               if (masterproc .and. j==1) write(iulog,*) '   ', trim(cnst_name(m_cnst)),&
                                          ' initialized by "aoa_tracers_init_cnst"'
+           else if (tritium_tracers_implements_cnst(cnst_name(m_cnst))) then
+              call tritium_tracers_init_cnst(cnst_name(m_cnst), arr3d_a(:,:,j), gcid)
+              if (masterproc .and. j==1) write(iulog,*) '   ', trim(cnst_name(m_cnst)),&
+                                         ' initialized by "tritium_tracers_init_cnst"'
            else if (co2_implements_cnst(cnst_name(m_cnst))) then
               call co2_init_cnst(cnst_name(m_cnst), arr3d_a(:,:,j), gcid)
               if (masterproc .and. j==1) write(iulog,*) '   ', trim(cnst_name(m_cnst)),&

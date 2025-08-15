@@ -10,6 +10,7 @@ module physpkg
   !                            initialization of grid info in phys_state.
   ! Nov 2010    A. Gettelman   Put micro/macro physics into separate routines
   ! July 2015   B. Singh       Added code for unified convective transport
+  ! August 2025 S. Feng        Added tritium tracers to physpkg
   !-----------------------------------------------------------------------
 
 
@@ -163,6 +164,7 @@ subroutine phys_register
     use prescribed_ghg,     only: prescribed_ghg_register
     use sslt_rebin,         only: sslt_rebin_register
     use aoa_tracers,        only: aoa_tracers_register
+    use tritium_tracers,    only: tritium_tracers_register
     use aircraft_emit,      only: aircraft_emit_register
     use cam_diagnostics,    only: diag_register
     use cloud_diagnostics,  only: cloud_diagnostics_register
@@ -366,6 +368,9 @@ subroutine phys_register
 
     ! Register age of air tracers
     call aoa_tracers_register()
+
+    ! Register Tritium tracer
+    call tritium_tracers_register()
 
     ! Register test tracers
     ! ***** N.B. ***** This is the last call to register constituents because
@@ -759,6 +764,7 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
     use conv_water,         only: conv_water_init
     use tracers,            only: tracers_init
     use aoa_tracers,        only: aoa_tracers_init
+    use tritium_tracers,    only: tritium_tracers_init
     use rayleigh_friction,  only: rayleigh_friction_init
     use pbl_utils,          only: pbl_utils_init
     use vertical_diffusion, only: vertical_diffusion_init
@@ -834,6 +840,9 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
 
     ! age of air tracers
     call aoa_tracers_init()
+
+    ! Tritium tracer
+    call tritium_tracers_init()
 
     teout_idx = pbuf_get_index( 'TEOUT')
 
@@ -1545,6 +1554,7 @@ subroutine tphysac (ztodt,   cam_in,  &
     use ionosphere,         only: ionos_intr ! WACCM-X ionosphere
     use tracers,            only: tracers_timestep_tend
     use aoa_tracers,        only: aoa_tracers_timestep_tend
+    use tritium_tracers,    only: tritium_tracers_timestep_tend
     use physconst,          only: rhoh2o, latvap,latice, rga
     use aero_model,         only: aero_model_drydep
     use check_energy,       only: check_energy_chng, check_water, & 
@@ -1762,6 +1772,11 @@ if (l_tracer_aero) then
     call physics_update(state, ptend, ztodt, tend)
     call check_tracers_chng(state, tracerint, "aoa_tracers_timestep_tend", nstep, ztodt,   &
          cam_in%cflx)
+
+    ! Tritium tracer: one-timestep surface pulse + continuous radioactive decay
+    call tritium_tracers_timestep_tend(state, ptend, cam_in%cflx, cam_in%landfrac, ztodt)
+    call physics_update(state, ptend, ztodt, tend)
+    call check_tracers_chng(state, tracerint, "tritium_tracers_timestep_tend", nstep, ztodt, cam_in%cflx)
     
     ! add tendency from aircraft emissions
     call co2_cycle_set_ptend(state, pbuf, ptend)
@@ -2995,6 +3010,7 @@ subroutine phys_timestep_init(phys_state, cam_out, pbuf2d)
   use radiation,           only: radiation_do
   use tracers,             only: tracers_timestep_init
   use aoa_tracers,         only: aoa_tracers_timestep_init
+  use tritium_tracers,     only: tritium_tracers_timestep_init
   use vertical_diffusion,  only: vertical_diffusion_ts_init
   use radheat,             only: radheat_timestep_init
   use solar_data,          only: solar_data_advance
@@ -3086,6 +3102,9 @@ subroutine phys_timestep_init(phys_state, cam_out, pbuf2d)
 
   ! age of air tracers
   call aoa_tracers_timestep_init(phys_state)
+
+  ! Tritium tracers
+  call tritium_tracers_timestep_init( phys_state) 
 
   ! Update Nudging values, if needed
   !----------------------------------

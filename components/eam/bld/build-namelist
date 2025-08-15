@@ -35,7 +35,37 @@
 # 2008-11-14  B. Eaton         Extend use_case functionality.
 # 2009-09-02  B. Eaton         Allow namelist definition, defaults, and use case files
 #                              to come from the user source mod directories.
-#--------------------------------------------------------------------------------------------
+# 2025-08-13  S. Feng          Add tritium tracer (TRIT) integration scaffold.
+# -------------------------------------------------------------------------------------------
+# Tritium tracer (TRIT) integration scaffold
+# 
+# This block documents how to enable and control the Tritium Fate & Transport tracer.
+# It is COMMENT-ONLY to avoid validation errors until the namelist definition XML contains
+# the tritium variables.
+#
+# User namelist example (user_nl_eam):
+#   &tritium_tracers_nl
+#     tritium_tracers_flag = .true.
+#     half_life_yr         = 12.32
+#     inject_lat_deg       = 46.0
+#     inject_lon_deg       = -120.0
+#     inject_nstep         = 0
+#     inject_mass_kg       = 0.0
+#     inject_activity_Ci   = 0.0
+#   /
+#
+# Notes:
+# - Set either inject_mass_kg (kg) OR inject_activity_Ci (Ci). If both are set, mass wins.
+# - Injection happens once at inject_nstep as a surface flux into the nearest grid column;
+#   continuous radioactive decay is always on: dq/dt = -lambda*q,
+#   with lambda = ln(2)/half_life_yr.
+# - The code path mirrors aoa_tracers.* hooks (register/init/init_cnst/timestep_*/readnl).
+#
+# If/when a configure-time toggle is added, you can auto-enable via build-namelist by
+# uncommenting the snippet near the AOA block below:
+#   if ($cfg->get('tritium_trcs')) { add_default($nl, 'tritium_tracers_flag', 'val'=>'.true.'); }
+#
+# -------------------------------------------------------------------------------------------
 
 use strict;
 #use warnings;
@@ -996,6 +1026,15 @@ my $co2_cycle_rad_passive = ($nl->get_value('co2_cycle_rad_passive') =~ /$TRUE/i
 # If test tracers have been requested, set tracers_flag=.true.
 if ($cfg->get('nadv_tt')) { add_default($nl, 'tracers_flag', 'val'=>'.true.'); }
 if ($cfg->get('age_of_air_trcs')) { add_default($nl, 'aoa_tracers_flag', 'val'=>'.true.'); }
+# Tritium tracer: uncomment when config key 'tritium_trcs' is available to auto-enable
+if ($cfg->get('tritium_trcs')) { add_default($nl, 'tritium_tracers_flag', 'val'=>'.true.'); }
+# Optional explicit defaults (use only after adding to namelist_definition.xml):
+add_default($nl, 'half_life_yr',       'val'=>'12.32');
+add_default($nl, 'inject_nstep',       'val'=>'0');
+add_default($nl, 'inject_mass_kg',     'val'=>'0.0');
+add_default($nl, 'inject_activity_Ci', 'val'=>'0.0');
+add_default($nl, 'inject_lat_deg',     'val'=>'46.0');
+add_default($nl, 'inject_lon_deg',     'val'=>'-120.0');
 
 # Defaults for radiatively active constituents
 

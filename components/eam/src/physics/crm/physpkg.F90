@@ -93,6 +93,7 @@ subroutine phys_register
   use prescribed_ghg,           only: prescribed_ghg_register
   use sslt_rebin,               only: sslt_rebin_register
   use aoa_tracers,              only: aoa_tracers_register
+  use tritium_tracers,          only: tritium_tracers_register
   use aircraft_emit,            only: aircraft_emit_register
   use cam_diagnostics,          only: diag_register
   use cospsimulator_intr,       only: cospsimulator_intr_register
@@ -189,6 +190,9 @@ subroutine phys_register
 
   ! Register age of air tracers
   call aoa_tracers_register()
+
+  ! Register Tritium tracer
+  call tritium_tracers_register()
 
   ! Register test tracers
   ! This is the last call to register constituents because
@@ -529,6 +533,7 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
   use conv_water,         only: conv_water_init
   use tracers,            only: tracers_init
   use aoa_tracers,        only: aoa_tracers_init
+  use tritium_tracers,    only: tritium_tracers_init
   use rayleigh_friction,  only: rayleigh_friction_init
   use pbl_utils,          only: pbl_utils_init
   use phys_debug_util,    only: phys_debug_init
@@ -595,6 +600,9 @@ subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
 
   ! age of air tracers
   call aoa_tracers_init()
+
+  ! Tritium tracer
+  call tritium_tracers_init()
 
   teout_idx = pbuf_get_index( 'TEOUT')
 
@@ -1051,6 +1059,7 @@ subroutine tphysac (ztodt, cam_in, sgh, sgh30, cam_out, state, tend, pbuf, fsds 
   use physics_types,      only: physics_dme_adjust, set_dry_to_wet, physics_state_check
   use tracers,            only: tracers_timestep_tend
   use aoa_tracers,        only: aoa_tracers_timestep_tend
+  use tritium_tracers,    only: tritium_tracers_timestep_tend
   use physconst,          only: rhoh2o, latvap,latice, rga
   use aero_model,         only: aero_model_drydep
   use check_energy,       only: check_energy_chng, &
@@ -1167,9 +1176,13 @@ subroutine tphysac (ztodt, cam_in, sgh, sgh30, cam_out, state, tend, pbuf, fsds 
     call check_tracers_chng(state, tracerint, "tracers_timestep_tend", nstep, ztodt, cam_in%cflx)
 
     call aoa_tracers_timestep_tend(state, ptend, cam_in%cflx, cam_in%landfrac, ztodt)      
-
     call physics_update(state, ptend, ztodt, tend)
     call check_tracers_chng(state, tracerint, "aoa_tracers_timestep_tend", nstep, ztodt, cam_in%cflx)
+
+    ! Tritium tracer: radioactive decay + one-time surface pulse
+    call tritium_tracers_timestep_tend(state, ptend, cam_in%cflx, cam_in%landfrac, ztodt)
+    call physics_update(state, ptend, ztodt, tend)
+    call check_tracers_chng(state, tracerint, "tritium_tracers_timestep_tend", nstep, ztodt, cam_in%cflx)
 
     ! add tendency from aircraft emissions
     call co2_cycle_set_ptend(state, pbuf, ptend)
@@ -1897,6 +1910,13 @@ subroutine phys_timestep_init(phys_state, cam_out, pbuf2d)
   use radiation,           only: radiation_do
   use tracers,             only: tracers_timestep_init
   use aoa_tracers,         only: aoa_tracers_timestep_init
+  ! Tritium works without touching phys_timestep_init because the one-shot pulse and decay 
+  ! live in tritium_tracers_timestep_tend, and nothing time-dependent was needed in a 
+  ! per-timestep “init.” However, for AOA parity and clean lifecycle, Tritium should also 
+  ! hook into the same per-step init phase that AOA uses. That’s the right place to do the 
+  ! cheap mapping of the global injection column → local index (inj_i(c)), so the tend step 
+  ! can just apply the flux.
+  use tritium_tracers,    only: tritium_tracers_timestep_init
   use vertical_diffusion,  only: vertical_diffusion_ts_init
   use radheat,             only: radheat_timestep_init
   use solar_data,          only: solar_data_advance
@@ -1953,6 +1973,9 @@ subroutine phys_timestep_init(phys_state, cam_out, pbuf2d)
 
   ! age of air tracers
   call aoa_tracers_timestep_init(phys_state)
+
+  ! tritium tracers
+  call tritium_tracers_timestep_init( phys_state )
 
 end subroutine phys_timestep_init
 
