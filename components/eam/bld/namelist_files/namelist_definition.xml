@@ -4817,68 +4817,86 @@ If this is not specified then they are not read from IC file.
 Default: TRUE
 </entry>
 
-  <!-- Tritium Fate & Transport tracer (TRIT) -->
-  <!-- Mirrors AOA structure, but with decay + one-timestep injection -->
-  <!-- All ids must be lower-case (Fortran namelist parser rule). -->
-
-  <entry id="tritium_tracers_flag" type="logical" category="tritium_trcs"
-         group="tritium_tracers_nl" valid_values="">
-    Enable the Tritium Fate & Transport tracer package.
-    When TRUE, the TRIT constituent is registered and its decay and
-    one-timestep surface pulse can be applied.
+  <!-- Tritium Fate & Transport (EAM physics) -->
+  <!-- Namelist group: tritium_tracers_nl -->
+  <entry id="tritium_tracers_flag" type="logical" category="tritium_tracers"
+         group="tritium_tracers_nl" valid_values="" >
+    Turn on the tritium tracer module (TRIT tracer with TRITSRC and TRITDEC diagnostics).
     Default: FALSE
   </entry>
 
-  <entry id="tritium_read_from_ic_file" type="logical" category="tritium_trcs"
-         group="tritium_tracers_nl" valid_values="">
-    If TRUE, attempt to read TRIT from the IC file; if missing, fall back
-    to internal initialization. If FALSE, skip IC read and initialize internally.
-    Default: FALSE
+  <entry id="tritium_read_from_ic_file" type="logical" category="tritium_tracers"
+         group="tritium_tracers_nl" valid_values="" >
+    If TRUE, initialize TRIT from the initial condition file when available.
+    Default: TRUE
   </entry>
 
-  <entry id="half_life_yr" type="real" category="tritium_trcs"
-         group="tritium_tracers_nl" valid_values="">
-    Tritium half-life [years]. Used to compute the decay constant
-    lambda = ln(2) / (half_life_yr * 365.25 * 86400) [s^-1].
+  <entry id="half_life_yr" type="real" category="tritium_tracers"
+         group="tritium_tracers_nl" valid_values="" >
+    Tritium half-life (years). Used to compute decay constant (lambda = ln(2)/half_life_yr).
     Default: 12.32
   </entry>
 
-  <entry id="inject_nstep" type="integer" category="tritium_trcs"
-         group="tritium_tracers_nl" valid_values="">
-    Physics timestep index at which to apply the one-timestep surface pulse.
-    Counted from the first physics step of the run (typically 0).
+  <entry id="inject_lat_deg" type="real" category="tritium_tracers"
+         group="tritium_tracers_nl" valid_values="" >
+    Latitude of single-point injection (degrees, +N).
+    Default: 0.0
+  </entry>
+
+  <entry id="inject_lon_deg" type="real" category="tritium_tracers"
+         group="tritium_tracers_nl" valid_values="" >
+    Longitude of single-point injection (degrees east; negative allowed for west).
+    Default: 0.0
+  </entry>
+
+  <entry id="inject_at_first_step" type="logical" category="tritium_tracers"
+         group="tritium_tracers_nl" valid_values="" >
+    If TRUE, inject at the first physics step (nstep==1). Overrides other triggers.
+    Default: FALSE
+  </entry>
+
+  <entry id="inject_year" type="integer" category="tritium_tracers"
+         group="tritium_tracers_nl" valid_values="" >
+    Calendar-year (UTC) for the one-time injection. If &gt;= 0, the calendar trigger is used
+    (and overrides inject_nstep). Use with inject_month, inject_day, inject_tod_in_sec.
+    Default: -1
+  </entry>
+
+  <entry id="inject_month" type="integer" category="tritium_tracers"
+         group="tritium_tracers_nl" valid_values="" >
+    Calendar-month (1..12) used when the calendar trigger is active.
+    Default: -1
+  </entry>
+
+  <entry id="inject_day" type="integer" category="tritium_tracers"
+         group="tritium_tracers_nl" valid_values="" >
+    Calendar-day (1..31) used when the calendar trigger is active.
+    Default: -1
+  </entry>
+
+  <entry id="inject_tod_in_sec" type="integer" category="tritium_tracers"
+         group="tritium_tracers_nl" valid_values="" >
+    Time-of-day (UTC) in seconds since 00:00 used when the calendar trigger is active (0..86399).
     Default: 0
   </entry>
 
-  <entry id="inject_mass_kg" type="real" category="tritium_trcs"
-         group="tritium_tracers_nl" valid_values="">
-    Total Tritium mass to inject [kg] at the pulse timestep. If > 0, this
-    value is used directly. If <= 0 and inject_activity_Ci > 0, mass is
-    derived from activity using the specified half-life. If both are zero,
-    no mass is injected.
+  <entry id="inject_nstep" type="integer" category="tritium_tracers"
+         group="tritium_tracers_nl" valid_values="" >
+    Fallback one-time injection at this physics step (ignored if inject_at_first_step=TRUE or
+    inject_year &gt;= 0). If &lt;= 0, defaults to step 1.
+    Default: 1
+  </entry>
+
+  <entry id="inject_activity_ci" type="real" category="tritium_tracers"
+         group="tritium_tracers_nl" valid_values="" >
+    Release activity (curies) for the one-time surface pulse. Converted internally to mass using
+    tritium specific activity. If both inject_mass_kg and inject_activity_ci are set, mass takes precedence.
     Default: 0.0
   </entry>
 
-  <entry id="inject_activity_Ci" type="real" category="tritium_trcs"
-         group="tritium_tracers_nl" valid_values="">
-    Total Tritium activity to inject [Ci] at the pulse timestep. Used only
-    if inject_mass_kg <= 0. Conversion uses 1 Ci = 3.7e10 Bq and specific
-    activity SA = (lambda * N_A) / M_T.
-    Default: 0.0
-  </entry>
-
-  <entry id="inject_lat_deg" type="real" category="tritium_trcs"
-         group="tritium_tracers_nl" valid_values="">
-    Target latitude of the injection [degrees], range [-90, 90].
-    The package selects the physics grid column nearest to
-    (inject_lat_deg, inject_lon_deg).
-    Default: 0.0
-  </entry>
-
-  <entry id="inject_lon_deg" type="real" category="tritium_trcs"
-         group="tritium_tracers_nl" valid_values="">
-    Target longitude of the injection [degrees]. Either [-180, 180] or
-    [0, 360] are accepted; the code normalizes internally.
+  <entry id="inject_mass_kg" type="real" category="tritium_tracers"
+         group="tritium_tracers_nl" valid_values="" >
+    Release mass (kg) for the one-time surface pulse. Alternative to inject_activity_ci.
     Default: 0.0
   </entry>
   

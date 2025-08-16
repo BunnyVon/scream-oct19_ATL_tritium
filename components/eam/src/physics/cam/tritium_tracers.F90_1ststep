@@ -56,6 +56,13 @@ module tritium_tracers
   real(r8) :: inject_lat_deg  = 33.2850657_r8   ! target latitude (deg)
   real(r8) :: inject_lon_deg  = -81.6378505_r8 ! target longitude (deg)
 
+  ! Injection trigger controls
+  logical :: inject_at_first_step = .false.  ! if true, inject at first physics step (nstep==1)
+  integer :: inject_year   = -1              ! calendar trigger: year (>=0 enables)
+  integer :: inject_month  = -1              ! 1..12
+  integer :: inject_day    = -1              ! 1..31
+  integer :: inject_tod_in_sec    = 0               ! seconds since 00:00 UTC (0..86399)
+
   ! Derived runtime state for locating the single injection column
   integer  :: inj_gcol = -1        ! global physics-column id of target column
   real(r8) :: inj_area = 0._r8     ! m^2 area of that column
@@ -88,7 +95,7 @@ contains
 
     namelist /tritium_tracers_nl/ tritium_tracers_flag, tritium_read_from_ic_file, &
          half_life_yr, inject_lat_deg, inject_lon_deg, inject_nstep, inject_mass_kg, &
-         inject_activity_Ci
+         inject_activity_Ci, inject_at_first_step, inject_year, inject_month, inject_day, inject_tod_in_sec
          
     !-----------------------------------------------------------------------------
 
@@ -113,6 +120,11 @@ contains
     call mpibcast(inject_nstep,            1, mpiint,  0, mpicom)
     call mpibcast(inject_mass_kg,          1, mpir8,   0, mpicom)
     call mpibcast(inject_activity_Ci,      1, mpir8,   0, mpicom)
+    call mpibcast(inject_at_first_step,   1, mpilog,  0, mpicom)
+    call mpibcast(inject_year,            1, mpiint,  0, mpicom)
+    call mpibcast(inject_month,           1, mpiint,  0, mpicom)
+    call mpibcast(inject_day,             1, mpiint,  0, mpicom)
+    call mpibcast(inject_tod_in_sec,             1, mpiint,  0, mpicom)
 #endif
   end subroutine tritium_tracers_readnl
 
@@ -242,7 +254,7 @@ contains
 
     use physics_types, only: physics_state, physics_ptend, physics_ptend_init
     use cam_history,   only: outfld
-    use time_manager,  only: get_nstep
+    use time_manager,  only: get_nstep, get_curr_date
     
     ! Arguments
     type(physics_state), intent(in)    :: state              ! state variables 
@@ -264,7 +276,8 @@ contains
     integer  :: ibest
     real(r8) :: dbest, dlat0, d    
     real(r8) :: src3d(pcols, pver)    
-    
+    integer :: yr, mon, day, tod_i
+    logical :: inject_now
     logical  :: lq(pcnst)
 
     !------------------------------------------------------------------
@@ -279,10 +292,30 @@ contains
     call physics_ptend_init(ptend, state%psetcols, 'tritium_tracers', lq=lq)
 
     nstep = get_nstep()
-    if (inject_nstep <= 0) then
-       target_nstep = 1
+    call get_curr_date(yr, mon, day, tod_i)
+
+    ! Decide if the pulse should happen on this step.
+    ! Priority:
+    !   1) inject_at_first_step => nstep==1
+    !   2) calendar trigger (inject_year >= 0)
+    !   3) inject_nstep (>0)
+    !   4) fallback to first step
+    inject_now = .false.
+    if (inject_at_first_step) then
+       if (nstep == 1) inject_now = .true.
+    else if (inject_year >= 0 .and. inject_month > 0 .and. inject_day > 0) then
+       if (yr == inject_year .and. mon == inject_month .and. day == inject_day) then
+          if ( real(tod_i, r8) >= real(inject_tod_in_sec, r8) .and. real(tod_i, r8) < real(inject_tod_in_sec, r8) + dt ) then
+             inject_now = .true.
+          end if
+       end if
     else
-       target_nstep = inject_nstep
+       if (inject_nstep > 0) then
+          target_nstep = inject_nstep
+       else
+          target_nstep = 1
+       end if
+       if (nstep == target_nstep) inject_now = .true.
     end if
     lchnk = state%lchnk
     ncol  = state%ncol
@@ -302,7 +335,7 @@ contains
     cflx(:,ixtrit) = 0._r8
 
     ! One-time surface injection at specified timestep into the selected column
-    if (.not. inj_done .and. nstep == target_nstep) then
+    if (.not. inj_done .and. inject_now) then
        ! Determine total mass to inject (prefer kg; else convert from Ci)
        M_release_kg = inject_mass_kg
        if (M_release_kg <= 0._r8 .and. inject_activity_Ci > 0._r8) then
