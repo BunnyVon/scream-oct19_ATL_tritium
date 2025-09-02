@@ -126,6 +126,18 @@ contains
     call mpibcast(inject_day,             1, mpiint,  0, mpicom)
     call mpibcast(inject_tod_in_sec,             1, mpiint,  0, mpicom)
 #endif
+
+    !---------------------------------------------------------------------------
+    ! Normalize injection longitude into [0,360) degrees.  E3SM uses longitudes
+    ! in the 0–360 range.  Users might specify negative values in the namelist
+    ! (e.g., -81.6378505).  Convert negative longitudes to equivalent positive
+    ! angles and wrap values greater than 360 degrees back into the range.
+    !---------------------------------------------------------------------------
+    if (inject_lon_deg < 0.0_r8) then
+       inject_lon_deg = inject_lon_deg + 360.0_r8
+    else if (inject_lon_deg >= 360.0_r8) then
+       inject_lon_deg = modulo(inject_lon_deg, 360.0_r8)
+    end if 
   end subroutine tritium_tracers_readnl
 
 !===============================================================================
